@@ -32,7 +32,7 @@ function Checkout({ cartItems, setCartItems }) {
 
   const total = cartItems.reduce(
     (sum, item) => sum + Number(item.price) * item.quantity,
-    0
+    0,
   );
 
   const handleChange = (e) => {
@@ -83,11 +83,7 @@ function Checkout({ cartItems, setCartItems }) {
 
       await addDoc(collection(db, "users", user.uid, "orders"), orderData);
 
-      await setDoc(
-        doc(db, "users", user.uid),
-        { cart: [] },
-        { merge: true }
-      );
+      await setDoc(doc(db, "users", user.uid), { cart: [] }, { merge: true });
 
       localStorage.removeItem("cartItems");
       setCartItems([]);
@@ -95,7 +91,7 @@ function Checkout({ cartItems, setCartItems }) {
       navigate("/success");
     } catch (error) {
       console.error("Order error:", error);
-      alert("Something went wrong while placing your order");
+      alert(error.message);
     } finally {
       setIsPlacingOrder(false);
     }
@@ -190,7 +186,7 @@ function Checkout({ cartItems, setCartItems }) {
                     <span className="font-semibold">
                       ₹{" "}
                       {(Number(item.price) * item.quantity).toLocaleString(
-                        "en-IN"
+                        "en-IN",
                       )}
                     </span>
                   </div>
