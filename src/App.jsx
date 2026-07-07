@@ -1,25 +1,24 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Link } from "react-router-dom";
 import { useEffect, useState } from "react";
 
 import Navbar from "./components/Navbar";
 import Home from "./pages/Home";
+import Shop from "./pages/Shop";
 import ProductDetails from "./pages/ProductDetails";
 import Wishlist from "./pages/Wishlist";
 import Checkout from "./pages/Checkout";
-import { Link } from "react-router-dom";
 import OrderSuccess from "./pages/OrderSuccess";
+import Register from "./pages/Register";
+import Login from "./pages/Login";
+import MyOrders from "./pages/MyOrders";
+import ProtectedRoute from "./components/ProtectedRoute";
 
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import Register from "./pages/Register";
-import Login from "./pages/Login";
-import { doc, setDoc } from "firebase/firestore";
-import { db } from "./firebase/firebase";
-import { auth } from "./firebase/firebase";
-import { getDoc } from "firebase/firestore";
+
+import { doc, setDoc, getDoc } from "firebase/firestore";
+import { db, auth } from "./firebase/firebase";
 import { onAuthStateChanged } from "firebase/auth";
-import ProtectedRoute from "./components/ProtectedRoute";
-import MyOrders from "./pages/MyOrders";
 
 function App() {
   const [cartItems, setCartItems] = useState(() => {
@@ -32,99 +31,74 @@ function App() {
     return savedWishlist ? JSON.parse(savedWishlist) : [];
   });
 
+  const [cartOpen, setCartOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+
+  // ---------------- FIRESTORE HELPERS ----------------
   const saveWishlistToFirestore = async (wishlist) => {
     const user = auth.currentUser;
-
     if (!user) return;
 
-    await setDoc(
-      doc(db, "users", user.uid),
-      {
-        wishlist,
-      },
-      { merge: true },
-    );
+    try {
+      await setDoc(doc(db, "users", user.uid), { wishlist }, { merge: true });
+    } catch (error) {
+      console.error("Error saving wishlist:", error);
+    }
+  };
+
+  const saveCartToFirestore = async (cart) => {
+    const user = auth.currentUser;
+    if (!user) return;
+
+    try {
+      await setDoc(doc(db, "users", user.uid), { cart }, { merge: true });
+    } catch (error) {
+      console.error("Error saving cart:", error);
+    }
   };
 
   const loadWishlist = async () => {
     const user = auth.currentUser;
-
     if (!user) return;
 
-    const docRef = doc(db, "users", user.uid);
-    const docSnap = await getDoc(docRef);
+    try {
+      const docSnap = await getDoc(doc(db, "users", user.uid));
 
-    if (docSnap.exists()) {
-      console.log("Wishlist loaded:", docSnap.data());
-
-      setWishlistItems(docSnap.data().wishlist || []);
+      if (docSnap.exists()) {
+        setWishlistItems(docSnap.data().wishlist || []);
+      }
+    } catch (error) {
+      console.error("Error loading wishlist:", error);
     }
   };
 
+  const loadCart = async () => {
+    const user = auth.currentUser;
+    if (!user) return;
+
+    try {
+      const docSnap = await getDoc(doc(db, "users", user.uid));
+
+      if (docSnap.exists()) {
+        setCartItems(docSnap.data().cart || []);
+      }
+    } catch (error) {
+      console.error("Error loading cart:", error);
+    }
+  };
+
+  // ---------------- AUTH STATE ----------------
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
-        loadWishlist();
-        loadCart();
+        await Promise.all([loadWishlist(), loadCart()]);
       }
     });
 
     return () => unsubscribe();
   }, []);
 
-  const toggleWishlist = (product) => {
-    setWishlistItems((prev) => {
-      const exists = prev.find((item) => item.id === product.id);
-
-      let updatedWishlist;
-
-      if (exists) {
-        updatedWishlist = prev.filter((item) => item.id !== product.id);
-
-        toast.info(`${product.name} removed from wishlist!`);
-      } else {
-        updatedWishlist = [...prev, product];
-
-        toast.success(`${product.name} added to wishlist!`);
-      }
-
-      saveWishlistToFirestore(updatedWishlist);
-
-      return updatedWishlist;
-    });
-  };
-
-  const saveCartToFirestore = async (cart) => {
-    const user = auth.currentUser;
-
-    if (!user) return;
-
-    await setDoc(
-      doc(db, "users", user.uid),
-
-      {
-        cart,
-      },
-      { merge: true },
-    );
-  };
-
-  const loadCart = async () => {
-    const user = auth.currentUser;
-
-    if (!user) return;
-
-    const docRef = doc(db, "users", user.uid);
-    const docSnap = await getDoc(docRef);
-
-    if (docSnap.exists()) {
-      setCartItems(docSnap.data().cart || []);
-    }
-  };
-
-  const [cartOpen, setCartOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
-
+  // ---------------- LOCAL STORAGE ----------------
   useEffect(() => {
     localStorage.setItem("cartItems", JSON.stringify(cartItems));
   }, [cartItems]);
@@ -133,17 +107,49 @@ function App() {
     localStorage.setItem("wishlistItems", JSON.stringify(wishlistItems));
   }, [wishlistItems]);
 
+  // ---------------- SHARED CART UPDATER ----------------
+  const updateCartItems = (updatedCart) => {
+    setCartItems(updatedCart);
+    saveCartToFirestore(updatedCart);
+  };
+
+  // ---------------- WISHLIST ----------------
+  const toggleWishlist = (product) => {
+    setWishlistItems((prev) => {
+      const exists = prev.some((item) => item.id === product.id);
+
+      let updatedWishlist;
+
+      if (exists) {
+        updatedWishlist = prev.filter((item) => item.id !== product.id);
+        toast.info(`${product.name} removed from wishlist!`);
+      } else {
+        updatedWishlist = [...prev, product];
+        toast.success(`${product.name} added to wishlist!`);
+      }
+
+      saveWishlistToFirestore(updatedWishlist);
+      return updatedWishlist;
+    });
+  };
+
+  // ---------------- CART ----------------
   const addToCart = (product) => {
+    const cartKey = `${product.id}-${product.selectedSize || "nosize"}-${product.selectedColor || "nocolor"}`;
+
+    const existingItem = cartItems.find((item) => item.cartKey === cartKey);
+
     let updatedCart;
 
-    const exists = cartItems.find((item) => item.id === product.id);
-
-    if (exists) {
+    if (existingItem) {
       updatedCart = cartItems.map((item) =>
-        item.id === product.id
+        item.cartKey === cartKey
           ? {
               ...item,
-              quantity: item.quantity + 1,
+              quantity: Math.min(
+                item.quantity + (product.quantity || 1),
+                item.stock || item.quantity + (product.quantity || 1),
+              ),
             }
           : item,
       );
@@ -152,69 +158,68 @@ function App() {
         ...cartItems,
         {
           ...product,
-          quantity: 1,
+          cartKey,
+          quantity: product.quantity || 1,
         },
       ];
     }
 
-    setCartItems(updatedCart);
-
-    saveCartToFirestore(updatedCart);
-
+    updateCartItems(updatedCart);
     toast.success(`${product.name} added to cart!`);
     setCartOpen(true);
   };
 
-  const increaseQuantity = (id) => {
+  const increaseQuantity = (cartKey) => {
     const updatedCart = cartItems.map((item) =>
-      item.id === id
+      item.cartKey === cartKey
         ? {
             ...item,
-            quantity: item.quantity + 1,
+            quantity: Math.min(
+              item.quantity + 1,
+              item.stock || item.quantity + 1,
+            ),
           }
         : item,
     );
 
-    setCartItems(updatedCart);
-    saveCartToFirestore(updatedCart);
+    updateCartItems(updatedCart);
   };
 
-  const decreaseQuantity = (id) => {
+  const decreaseQuantity = (cartKey) => {
     const updatedCart = cartItems
       .map((item) =>
-        item.id === id
-          ? {
-              ...item,
-              quantity: item.quantity - 1,
-            }
+        item.cartKey === cartKey
+          ? { ...item, quantity: item.quantity - 1 }
           : item,
       )
       .filter((item) => item.quantity > 0);
 
-    setCartItems(updatedCart);
-    saveCartToFirestore(updatedCart);
+    updateCartItems(updatedCart);
   };
 
-  const removeFromCart = (indexToRemove) => {
-    const updatedCart = cartItems.filter((_, index) => index !== indexToRemove);
-
-    setCartItems(updatedCart);
-    saveCartToFirestore(updatedCart);
+  const removeFromCart = (cartKey) => {
+    const updatedCart = cartItems.filter((item) => item.cartKey !== cartKey);
+    updateCartItems(updatedCart);
   };
 
+  // ---------------- TOTALS ----------------
   const totalPrice = cartItems.reduce(
-    (total, item) =>
-      total + Number(item.price.replace(/,/g, "")) * item.quantity,
+    (total, item) => total + Number(item.price) * item.quantity,
+    0,
+  );
+
+  const totalCartCount = cartItems.reduce(
+    (sum, item) => sum + item.quantity,
     0,
   );
 
   return (
     <BrowserRouter>
-      <div className="bg-black min-h-screen">
+      <div className="bg-black min-h-screen text-white">
         <ToastContainer position="top-right" autoClose={2000} theme="dark" />
 
         <Navbar
-          cartCount={cartItems.length}
+          cartCount={totalCartCount}
           wishlistCount={wishlistItems.length}
           setCartOpen={setCartOpen}
           searchTerm={searchTerm}
@@ -226,6 +231,18 @@ function App() {
             path="/"
             element={
               <Home
+                addToCart={addToCart}
+                searchTerm={searchTerm}
+                wishlistItems={wishlistItems}
+                toggleWishlist={toggleWishlist}
+              />
+            }
+          />
+
+          <Route
+            path="/shop"
+            element={
+              <Shop
                 addToCart={addToCart}
                 searchTerm={searchTerm}
                 wishlistItems={wishlistItems}
@@ -254,34 +271,43 @@ function App() {
             path="/checkout"
             element={
               <ProtectedRoute>
-                <Checkout cartItems={cartItems} setCartItems={setCartItems} />
+                <Checkout
+                  cartItems={cartItems}
+                  updateCartItems={updateCartItems}
+                />
               </ProtectedRoute>
             }
           />
 
           <Route path="/success" element={<OrderSuccess />} />
-
           <Route path="/register" element={<Register />} />
-
           <Route path="/login" element={<Login />} />
 
-          <Route path="/orders" element={<MyOrders />} />
+          <Route
+            path="/orders"
+            element={
+              <ProtectedRoute>
+                <MyOrders />
+              </ProtectedRoute>
+            }
+          />
         </Routes>
 
+        {/* CART SIDEBAR */}
         {cartOpen && (
           <>
-            {/* Overlay */}
             <div
               onClick={() => setCartOpen(false)}
               className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40"
             />
 
-            {/* Cart Sidebar */}
-            <div className="fixed top-0 right-0 w-[350px] h-screen bg-zinc-900 text-white p-8 z-50 shadow-2xl overflow-y-auto">
-              <div className="flex items-center justify-between mb-10">
+            <div className="fixed top-0 right-0 w-full sm:w-[380px] h-screen bg-zinc-900 text-white p-6 sm:p-8 z-50 shadow-2xl overflow-y-auto">
+              <div className="flex items-center justify-between mb-8">
                 <h1 className="text-3xl font-bold">Cart</h1>
-
-                <button onClick={() => setCartOpen(false)} className="text-2xl">
+                <button
+                  onClick={() => setCartOpen(false)}
+                  className="text-2xl hover:opacity-80 transition"
+                >
                   ✕
                 </button>
               </div>
@@ -290,16 +316,15 @@ function App() {
                 {cartItems.length === 0 ? (
                   <div className="text-center mt-20">
                     <h2 className="text-2xl font-bold">Your cart is empty</h2>
-
                     <p className="text-gray-400 mt-3">
-                      Add some sneakers to continue shopping.
+                      Add some products to continue shopping.
                     </p>
                   </div>
                 ) : (
-                  cartItems.map((item, index) => (
+                  cartItems.map((item) => (
                     <div
-                      key={item.id}
-                      className="flex items-center gap-4 bg-white/5 p-4 rounded-2xl"
+                      key={item.cartKey}
+                      className="flex items-center gap-4 bg-white/5 p-4 rounded-2xl border border-white/10"
                     >
                       <img
                         src={item.images?.[0]}
@@ -310,11 +335,31 @@ function App() {
                       <div className="flex-1">
                         <h2 className="font-bold">{item.name}</h2>
 
-                        <p className="text-gray-400">₹ {item.price}</p>
+                        <p className="text-gray-400">
+                          ₹ {Number(item.price).toLocaleString("en-IN")}
+                        </p>
 
-                        <div className="flex items-center gap-3 mt-2">
+                        {item.selectedSize && (
+                          <p className="text-sm text-gray-400 mt-1">
+                            Size:{" "}
+                            <span className="text-white">
+                              {item.selectedSize}
+                            </span>
+                          </p>
+                        )}
+
+                        {item.selectedColor && (
+                          <p className="text-sm text-gray-400">
+                            Color:{" "}
+                            <span className="text-white">
+                              {item.selectedColor}
+                            </span>
+                          </p>
+                        )}
+
+                        <div className="flex items-center gap-3 mt-3">
                           <button
-                            onClick={() => decreaseQuantity(item.id)}
+                            onClick={() => decreaseQuantity(item.cartKey)}
                             className="w-8 h-8 rounded-full bg-white/10 hover:bg-white hover:text-black transition"
                           >
                             -
@@ -323,7 +368,7 @@ function App() {
                           <span className="font-bold">{item.quantity}</span>
 
                           <button
-                            onClick={() => increaseQuantity(item.id)}
+                            onClick={() => increaseQuantity(item.cartKey)}
                             className="w-8 h-8 rounded-full bg-white/10 hover:bg-white hover:text-black transition"
                           >
                             +
@@ -331,7 +376,7 @@ function App() {
                         </div>
 
                         <button
-                          onClick={() => removeFromCart(index)}
+                          onClick={() => removeFromCart(item.cartKey)}
                           className="mt-2 text-sm text-red-400 hover:text-red-300 transition"
                         >
                           Remove
@@ -346,7 +391,6 @@ function App() {
                 <div className="mt-10 border-t border-white/10 pt-6">
                   <div className="flex items-center justify-between text-xl font-bold">
                     <span>Total</span>
-
                     <span>₹ {totalPrice.toLocaleString("en-IN")}</span>
                   </div>
 

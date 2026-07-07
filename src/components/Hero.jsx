@@ -1,11 +1,15 @@
 import jordanMain from "../assets/shoes/jordan-main.png";
+import { motion } from "framer-motion";
 function Hero() {
   return (
-    <section className="w-full min-h-[90vh] bg-black text-white flex flex-col md:flex-row items-center justify-between px-8 md:px-16 overflow-hidden">
-        
+    <section className="w-full min-h-[90vh] bg-gradient-to-r from-black via-zinc-900 to-black text-white flex flex-col md:flex-row items-center justify-between px-8 md:px-16 overflow-hidden">
       {/* Left Content */}
-      <div className="max-w-2xl z-10">
-
+      <motion.div
+        initial={{ opacity: 0, x: -80 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.8 }}
+        className="max-w-2xl z-10"
+      >
         <p className="uppercase tracking-[5px] text-gray-400 mb-4">
           New Collection 2026
         </p>
@@ -15,40 +19,45 @@ function Hero() {
         </h1>
 
         <p className="text-gray-400 mt-6 text-lg max-w-lg">
-          Discover premium sneakers inspired by modern streetwear and performance culture.
+          Discover premium sneakers inspired by modern streetwear and
+          performance culture.
         </p>
 
         <div className="flex gap-5 mt-10">
-
-          <button className="bg-white text-black px-8 py-3 uppercase text-sm font-semibold hover:bg-gray-300 transition">
+          <button className="bg-white text-black px-8 py-3 rounded-full uppercase text-sm font-semibold hover:scale-105 transition">
             Shop Now
           </button>
 
-          <button className="border border-white px-8 py-3 uppercase text-sm font-semibold hover:bg-white hover:text-black transition">
+          <button className="border border-white rounded-full px-8 py-3 uppercase text-sm font-semibold hover:bg-white hover:text-black transition">
             Explore
           </button>
-
         </div>
-
-      </div>
+      </motion.div>
 
       {/* Right Image */}
-      <div className="relative mt-16 md:mt-0 flex items-center justify-center">
-
+      <motion.div
+        initial={{ opacity: 0, x: 80 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.8 }}
+        className="relative mt-16 md:mt-0 flex items-center justify-center"
+      >
         {/* Glow Effect */}
         <div className="absolute w-[300px] h-[300px] md:w-[450px] md:h-[450px] bg-white/10 blur-3xl rounded-full"></div>
 
         {/* Shoe Image */}
-        <img
+        <motion.img
           src={jordanMain}
           alt="Jordan Sneaker"
-          className="relative w-[300px] md:w-[600px] rotate-[-20deg] hover:rotate-[-10deg] transition duration-500"
+          className="relative w-[300px] md:w-[600px] rotate-[-20deg]"
+          whileHover={{
+            rotate: -10,
+            scale: 1.05,
+          }}
+          transition={{ duration: 0.4 }}
         />
-
-      </div>
-
+      </motion.div>
     </section>
-  )
+  );
 }
 
-export default Hero
+export default Hero;

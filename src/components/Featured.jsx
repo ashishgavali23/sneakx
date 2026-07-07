@@ -27,6 +27,7 @@ function Featured() {
                 <h1 className = "text-white text-5xl md:text-6xl font-black uppercase">
                         Featured Sneakers
                 </h1>
+                
 
                 <div className = "grid md:grid-cols-3 gap-8">
                     {featuredProducts.map((item,index)=> (
