@@ -80,7 +80,7 @@ src/
 ### 1. Clone the repository
 
 ```bash
-git clone <your-repo-link>
+git clone https://github.com/ashishgavali23/sneakx.git
 cd sneakx
 ```
 
@@ -138,7 +138,7 @@ Add screenshots here after deployment:
 
 ## Live Demo
 
-git clone https://github.com/ashishgavali23/sneakx.git
+Add your deployed link here after hosting on Vercel.
 
 ## Author
 
