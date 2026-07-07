@@ -138,7 +138,7 @@ Add screenshots here after deployment:
 
 ## Live Demo
 
-Add your deployed link here after hosting on Vercel.
+git clone https://github.com/ashishgavali23/sneakx.git
 
 ## Author
 
