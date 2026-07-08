@@ -87,6 +87,12 @@ function App() {
     }
   };
 
+  const clearCart = () => {
+    setCartItems([]);
+    saveCartToFirestore([]);
+    localStorage.removeItem("cartItems");
+  };
+
   // ---------------- AUTH STATE ----------------
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -271,10 +277,7 @@ function App() {
             path="/checkout"
             element={
               <ProtectedRoute>
-                <Checkout
-                  cartItems={cartItems}
-                  updateCartItems={updateCartItems}
-                />
+                <Checkout cartItems={cartItems} clearCart={clearCart} />
               </ProtectedRoute>
             }
           />

@@ -9,7 +9,7 @@ import {
   setDoc,
 } from "firebase/firestore";
 
-function Checkout({ cartItems, setCartItems }) {
+function Checkout({ cartItems, clearCart }) {
   const navigate = useNavigate();
 
   const [paymentMethod, setPaymentMethod] = useState("UPI");
@@ -85,9 +85,7 @@ function Checkout({ cartItems, setCartItems }) {
 
       await setDoc(doc(db, "users", user.uid), { cart: [] }, { merge: true });
 
-      localStorage.removeItem("cartItems");
-      setCartItems([]);
-
+      clearCart();
       navigate("/success");
     } catch (error) {
       console.error("Order error:", error);
@@ -111,7 +109,6 @@ function Checkout({ cartItems, setCartItems }) {
           </div>
         ) : (
           <div className="grid md:grid-cols-2 gap-10">
-            {/* Customer Details */}
             <div className="bg-white/5 p-8 rounded-3xl border border-white/10">
               <h2 className="text-2xl font-bold mb-6">Customer Details</h2>
 
@@ -162,7 +159,6 @@ function Checkout({ cartItems, setCartItems }) {
               </div>
             </div>
 
-            {/* Order Summary */}
             <div className="bg-white/5 p-8 rounded-3xl border border-white/10">
               <h2 className="text-2xl font-bold mb-6">Order Summary</h2>
 
@@ -174,7 +170,6 @@ function Checkout({ cartItems, setCartItems }) {
                   >
                     <div>
                       <p className="font-semibold">{item.name}</p>
-
                       <p className="text-sm text-gray-400">
                         Qty: {item.quantity}
                         {item.selectedSize && ` | Size: ${item.selectedSize}`}
